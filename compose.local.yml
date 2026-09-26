@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: dopyme
+      POSTGRES_USER: dopyme
+      POSTGRES_PASSWORD: dopyme-local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dopyme -d dopyme"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - dopyme_local_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "3000"
+      DATABASE_URL: postgres://dopyme:dopyme-local@db:5432/dopyme
+    ports:
+      - "127.0.0.1:3002:3000"
+
+volumes:
+  dopyme_local_data:
