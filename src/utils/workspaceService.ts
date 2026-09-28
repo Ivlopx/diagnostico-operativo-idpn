@@ -88,9 +88,9 @@ export function deleteProcess(workspaceId: string, processId: string) { return a
 export function clearWorkspaceData(workspaceId: string) { return api<void>(`/api/workspaces/${workspaceId}/data`, { method: 'DELETE' }); }
 export function resetAllProcessesToBlank(workspaceId: string) { return api<void>(`/api/workspaces/${workspaceId}/processes/reset`, body({})); }
 
-export interface PSMIEditLock { acquired: true; expiresAt: string; }
-export function acquirePSMIEditLock(workspaceId: string, processId: string, psmiId: string) {
-  return api<PSMIEditLock>(`/api/workspaces/${workspaceId}/processes/${processId}/psmis/${encodeURIComponent(psmiId)}/lock`, body({}));
+export interface PSMIEditLock { acquired: true; expiresAt: string; tookOver?: boolean; }
+export function acquirePSMIEditLock(workspaceId: string, processId: string, psmiId: string, force = false) {
+  return api<PSMIEditLock>(`/api/workspaces/${workspaceId}/processes/${processId}/psmis/${encodeURIComponent(psmiId)}/lock`, body({ force }));
 }
 export function releasePSMIEditLock(workspaceId: string, processId: string, psmiId: string) {
   return api<void>(`/api/workspaces/${workspaceId}/processes/${processId}/psmis/${encodeURIComponent(psmiId)}/lock`, { method: 'DELETE', keepalive: true });

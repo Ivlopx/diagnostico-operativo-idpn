@@ -159,19 +159,20 @@ app.post('/api/workspaces/:workspaceId/processes/:processId/psmis/:psmiId/lock',
   const current = await allow(req, res, req.params.workspaceId); if (!current) return;
   const raw = cookies(req).dopyme_session;
   const holder = hash(raw);
+  const force = req.body?.force === true;
   const exists = await pool.query('SELECT 1 FROM processes WHERE id=$1 AND workspace_id=$2', [req.params.processId, req.params.workspaceId]);
   if (!exists.rowCount) return res.status(404).json({ error: 'El departamento ya no existe.' });
   const locked = await pool.query(`INSERT INTO psmi_edit_locks(workspace_id,process_id,psmi_id,holder_token_hash,expires_at)
     VALUES($1,$2,$3,$4,now()+interval '45 seconds')
     ON CONFLICT (workspace_id,process_id,psmi_id) DO UPDATE SET holder_token_hash=EXCLUDED.holder_token_hash,
       expires_at=EXCLUDED.expires_at,updated_at=now()
-    WHERE psmi_edit_locks.expires_at<=now() OR psmi_edit_locks.holder_token_hash=EXCLUDED.holder_token_hash
-    RETURNING expires_at`, [req.params.workspaceId, req.params.processId, req.params.psmiId, holder]);
+    WHERE psmi_edit_locks.expires_at<=now() OR psmi_edit_locks.holder_token_hash=EXCLUDED.holder_token_hash OR $5::boolean
+    RETURNING expires_at`, [req.params.workspaceId, req.params.processId, req.params.psmiId, holder, force]);
   if (!locked.rowCount) {
     const active = await pool.query('SELECT expires_at FROM psmi_edit_locks WHERE workspace_id=$1 AND process_id=$2 AND psmi_id=$3', [req.params.workspaceId, req.params.processId, req.params.psmiId]);
     return res.status(423).json({ error: 'Otra persona está editando este departamento.', expiresAt: active.rows[0]?.expires_at });
   }
-  res.json({ acquired: true, expiresAt: locked.rows[0].expires_at });
+  res.json({ acquired: true, expiresAt: locked.rows[0].expires_at, tookOver: force });
 });
 
 app.delete('/api/workspaces/:workspaceId/processes/:processId/psmis/:psmiId/lock', async (req, res) => {

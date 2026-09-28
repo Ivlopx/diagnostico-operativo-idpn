@@ -58,6 +58,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
   const saveTimers = useRef<Record<string, number>>({});
   const [editLock, setEditLock] = useState<{ status: 'loading' | 'held' | 'blocked' | 'error'; message?: string }>({ status: 'loading' });
   const [lockRetry, setLockRetry] = useState(0);
+  const [isTakingOver, setIsTakingOver] = useState(false);
 
   // Filter processes by area if selected
   const filteredProcesses = filterAreaId === 'all'
@@ -131,6 +132,20 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
       }
     };
   }, [workspaceId, lockProcessId, lockPsmiId, lockRetry]);
+
+  const takeOverEditing = async () => {
+    if (!lockProcessId || !lockPsmiId || isTakingOver) return;
+    setIsTakingOver(true);
+    try {
+      await acquirePSMIEditLock(workspaceId, lockProcessId, lockPsmiId, true);
+      setEditLock({ status: 'held', message: 'Ahora tienes la edición de este departamento.' });
+      setLockRetry((value) => value + 1);
+    } catch (error: any) {
+      setEditLock({ status: 'error', message: error?.message || 'No fue posible tomar la edición.' });
+    } finally {
+      setIsTakingOver(false);
+    }
+  };
 
   // Toggle activity expanded state
   const toggleActivity = (activityId: string) => {
@@ -494,13 +509,17 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
                         {editLock.status === 'loading' ? 'Preparando la edición…' : editLock.status === 'blocked' ? 'Este departamento está siendo editado' : 'No se pudo habilitar la edición'}
                       </p>
                       <p className="mt-0.5 text-xs text-[#17212B]/70">
-                        {editLock.status === 'blocked' ? 'Otra persona tiene la edición temporal. Puedes consultar la información, pero no modificarla hasta que termine.' : editLock.message || 'Espera un momento mientras comprobamos que nadie más esté editando este análisis.'}
+                        {editLock.status === 'blocked' ? 'Otra sesión conserva la edición temporal. Si confirmas que nadie está trabajando aquí, puedes tomar posesión y continuar.' : editLock.message || 'Espera un momento mientras comprobamos que nadie más esté editando este análisis.'}
                       </p>
                     </div>
                   </div>
                   {(editLock.status === 'blocked' || editLock.status === 'error') && (
-                    <button onClick={() => setLockRetry((value) => value + 1)} className="shrink-0 rounded-xl border border-[#173B57] bg-white px-3 py-1.5 text-xs font-semibold text-[#173B57]">
-                      Intentar editar
+                    <button
+                      onClick={editLock.status === 'blocked' ? takeOverEditing : () => setLockRetry((value) => value + 1)}
+                      disabled={isTakingOver}
+                      className="shrink-0 rounded-xl border border-[#173B57] bg-white px-3 py-1.5 text-xs font-semibold text-[#173B57] disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {isTakingOver ? 'Tomando posesión…' : editLock.status === 'blocked' ? 'Tomar posesión' : 'Reintentar'}
                     </button>
                   )}
                 </div>
