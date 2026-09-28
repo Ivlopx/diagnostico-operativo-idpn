@@ -33,8 +33,7 @@ export interface PDFExportPayload {
         entradas: string;
         salidas: string;
         unidadTiempo: string;
-        reviso: string;
-        autorizo: string;
+        elaboro: string;
         summary: {
           totalCompetencias: number;
           totalPuestos: number;
@@ -326,12 +325,12 @@ export function buildAuditPdfStream(payload: PDFExportPayload): PDFKit.PDFDocume
             psmiBoxY + 19
           );
 
-          // Metadata Grid: Entradas, Salidas, Unidad, Revisó, Autorizó
+          // Metadata Grid: Entradas, Salidas, Unidad y Elaboró
           doc.fillColor('#17212B').fontSize(7.5).font('Helvetica');
           doc.text(`Entradas: ${psmi.entradas || 'No especificadas'}`, 52, psmiBoxY + 36, { width: contentWidth - 30 });
           doc.text(`Salidas: ${psmi.salidas || 'No especificadas'}`, 52, psmiBoxY + 48, { width: contentWidth - 30 });
           doc.text(
-            `Unidad de Tiempo: ${psmi.unidadTiempo || 'Minutos'}   |   Revisó: ${psmi.reviso || 'No asignado'}   |   Autorizó: ${psmi.autorizo || 'No asignado'}`,
+            `Unidad de Tiempo: ${psmi.unidadTiempo || 'Minutos'}   |   Elaboró: ${psmi.elaboro || 'No asignado'}`,
             52,
             psmiBoxY + 60,
             { width: contentWidth - 30 }
@@ -422,7 +421,7 @@ export function buildAuditPdfStream(payload: PDFExportPayload): PDFKit.PDFDocume
               );
 
               doc.fillColor('#D9D5CC').fontSize(7.5).font('Helvetica').text(
-                `${act.etapa ? `Etapa: ${act.etapa}  |  ` : ''}T. Act: ${act.tiempoActividad || 0}  |  T. Proc: ${act.tiempoProceso || 0} ${psmi.unidadTiempo || 'min'}`,
+                `${act.etapa ? `Etapa: ${act.etapa}  |  ` : ''}Sin demora: ${act.tiempoActividad || 0}  |  Con demora: ${act.tiempoProceso || 0} ${psmi.unidadTiempo || 'min'}`,
                 360,
                 cardY + 5,
                 { width: contentWidth - 325, align: 'right' }
@@ -468,7 +467,7 @@ export function buildAuditPdfStream(payload: PDFExportPayload): PDFKit.PDFDocume
               // Roles: Responsable & Competencia
               doc.fillColor('#17212B').fontSize(7.5).font('Helvetica-Bold').text('Puesto Responsable: ', 48, bodyY, { continued: true });
               doc.font('Helvetica').text(`${act.responsable || 'No asignado'}   |   `, { continued: true });
-              doc.font('Helvetica-Bold').text('Competencia Requerida: ', { continued: true });
+              doc.font('Helvetica-Bold').text('Competencia: ', { continued: true });
               doc.font('Helvetica').text(`${act.competencia || 'No especificada'}`);
 
               bodyY += 13;

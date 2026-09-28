@@ -446,7 +446,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#F6F4EF] text-[#173B57] border border-[#173B57] rounded-xl transition-colors cursor-pointer shrink-0"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>+ Agregar otro análisis PSMI</span>
+                    <span>Agregar otro análisis PSMI</span>
                   </button>
                 </div>
 
@@ -476,11 +476,11 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
                   </div>
                 )}
 
-                {/* PSMI Parameters: Entradas, Salidas, Unidad de Tiempo, Revisó, Autorizó */}
+                {/* PSMI Parameters: departamento, entradas, salidas, unidad de tiempo y elaboración */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
                   <div>
                     <label className="text-[10px] font-mono uppercase text-[#17212B]/60 block mb-1">
-                      Nombre / Variante del Procedimiento
+                      Nombre del Departamento
                     </label>
                     <input
                       type="text"
@@ -489,7 +489,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
                         handleUpdatePSMIField(currentProcess, 'processName', e.target.value)
                       }
                       className="w-full bg-[#F6F4EF]/40 border border-[#D9D5CC] focus:border-[#173B57] focus:bg-white px-2.5 py-1.5 rounded-xl outline-hidden font-medium"
-                      placeholder="Nombre del procedimiento..."
+                      placeholder="Nombre del departamento..."
                     />
                   </div>
 
@@ -546,31 +546,16 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
 
                   <div>
                     <label className="text-[10px] font-mono uppercase text-[#17212B]/60 block mb-1">
-                      Revisó (Puesto / Nombre)
+                      Elaboró (Puesto / Nombre)
                     </label>
                     <input
                       type="text"
-                      value={currentPSMI.reviso || ''}
+                      value={currentPSMI.elaboro || currentPSMI.reviso || currentPSMI.autorizo || ''}
                       onChange={(e) =>
-                        handleUpdatePSMIField(currentProcess, 'reviso', e.target.value)
+                        handleUpdatePSMIField(currentProcess, 'elaboro', e.target.value)
                       }
                       className="w-full bg-[#F6F4EF]/40 border border-[#D9D5CC] focus:border-[#173B57] focus:bg-white px-2.5 py-1.5 rounded-xl outline-hidden"
-                      placeholder="Auditor / Jefe de Área..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-mono uppercase text-[#17212B]/60 block mb-1">
-                      Autorizó (Dirección / Gerencia)
-                    </label>
-                    <input
-                      type="text"
-                      value={currentPSMI.autorizo || ''}
-                      onChange={(e) =>
-                        handleUpdatePSMIField(currentProcess, 'autorizo', e.target.value)
-                      }
-                      className="w-full bg-[#F6F4EF]/40 border border-[#D9D5CC] focus:border-[#173B57] focus:bg-white px-2.5 py-1.5 rounded-xl outline-hidden"
-                      placeholder="Dirección General..."
+                      placeholder="Responsable de elaboración..."
                     />
                   </div>
                 </div>
@@ -664,7 +649,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#173B57] hover:bg-[#102D43] text-white rounded-xl transition-colors cursor-pointer shadow-sm"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>+ Agregar Actividad</span>
+                    <span>Agregar actividad</span>
                   </button>
                 </div>
 
@@ -677,7 +662,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
                       onClick={() => handleAddActivity(currentProcess)}
                       className="text-xs text-[#173B57] font-semibold hover:underline cursor-pointer"
                     >
-                      + Registrar primera actividad
+                      Registrar primera actividad
                     </button>
                   </div>
                 ) : (
@@ -793,7 +778,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
 
                               <div className="sm:col-span-3">
                                 <label className="text-[10px] font-mono uppercase text-[#17212B]/60 block mb-1">
-                                  Etapa del Proceso
+                                  Etapa del Proceso (Orden)
                                 </label>
                                 <input
                                   type="text"
@@ -804,7 +789,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
                                     })
                                   }
                                   className="w-full bg-[#F6F4EF]/30 border border-[#D9D5CC] focus:border-[#173B57] focus:bg-white px-2.5 py-1.5 rounded-xl outline-hidden"
-                                  placeholder="Ej. Recepción, Ensamble, Cierre"
+                                  placeholder="Ej. I, II, III o 1, 2, 3"
                                 />
                               </div>
 
@@ -849,7 +834,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="text-[10px] font-mono uppercase text-[#17212B]/60 block mb-1">
-                                  Competencia Requerida
+                                  Competencia
                                 </label>
                                 <input
                                   type="text"
@@ -860,7 +845,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
                                     })
                                   }
                                   className="w-full bg-[#F6F4EF]/30 border border-[#D9D5CC] focus:border-[#173B57] focus:bg-white px-2.5 py-1.5 rounded-xl outline-hidden"
-                                  placeholder="Ej. Manejo de montacargas, Criterio contable, etc."
+                                  placeholder="Ej. I, II o III (nivel de organigrama)"
                                 />
                               </div>
 
@@ -917,7 +902,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
                                     className="w-4 h-4 accent-[#173B57]"
                                   />
                                   <span className="font-mono text-xs font-medium text-[#17212B]">
-                                    Es requisito (legal/norma)
+                                    Es requisito (legal/norma/interno)
                                   </span>
                                 </label>
 
@@ -1094,7 +1079,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
                               <div className="grid w-full grid-cols-1 gap-3 min-[380px]:grid-cols-2 sm:flex sm:w-auto sm:items-center sm:gap-4">
                                 <div>
                                   <label className="text-[10px] font-mono text-[#17212B]/60 block mb-0.5">
-                                    Tiempo Actividad ({currentPSMI.unidadTiempo || 'min'})
+                                    Tiempo Sin Demora ({currentPSMI.unidadTiempo || 'min'})
                                   </label>
                                   <input
                                     type="number"
@@ -1112,7 +1097,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
 
                                 <div>
                                   <label className="text-[10px] font-mono text-[#17212B]/60 block mb-0.5">
-                                    Tiempo Proceso ({currentPSMI.unidadTiempo || 'min'})
+                                    Tiempo Con Demora ({currentPSMI.unidadTiempo || 'min'})
                                   </label>
                                   <input
                                     type="number"

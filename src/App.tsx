@@ -280,8 +280,7 @@ export default function App() {
                 entradas: psmi.entradas || '',
                 salidas: psmi.salidas || '',
                 unidadTiempo: psmi.unidadTiempo || 'Minutos',
-                reviso: psmi.reviso || '',
-                autorizo: psmi.autorizo || '',
+                elaboro: psmi.elaboro || psmi.reviso || psmi.autorizo || '',
                 summary: calculatePSMISummary(psmi),
                 actividades: (psmi.actividades || []).map((act) => ({
                   no: act.no,

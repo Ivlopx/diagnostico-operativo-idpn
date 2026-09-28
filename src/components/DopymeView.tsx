@@ -400,7 +400,7 @@ export const DopymeView: React.FC<DopymeViewProps> = ({
                   {areas.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-[#17212B]/50 italic">
-                        No hay áreas registradas. Agrega tu primera área con el botón "+ Agregar área".
+                        No hay áreas registradas. Agrega tu primera área con el botón "Agregar área".
                       </td>
                     </tr>
                   ) : (
@@ -575,7 +575,7 @@ export const DopymeView: React.FC<DopymeViewProps> = ({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#173B57] hover:bg-[#102D43] text-white rounded-xl transition-colors cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>+ Agregar proceso o actividad</span>
+                    <span>Agregar función o departamento</span>
                   </button>
                 ) : (
                   <div className="flex items-center gap-1.5">
@@ -619,7 +619,7 @@ export const DopymeView: React.FC<DopymeViewProps> = ({
                     onClick={() => setIsCreatingProcess(true)}
                     className="text-xs text-[#173B57] font-semibold hover:underline cursor-pointer"
                   >
-                    + Agregar el primer proceso
+                    Agregar la primera función o departamento
                   </button>
                 </div>
               ) : (

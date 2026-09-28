@@ -197,8 +197,7 @@ export async function exportWorkspaceToExcel(
     'Proceso',
     'Entradas',
     'Salidas',
-    'Revisó',
-    'Autorizó',
+    'Elaboró',
     'No. Actividad',
     'Etapa',
     'Actividad',
@@ -209,8 +208,8 @@ export async function exportWorkspaceToExcel(
     '¿Agrega Valor?',
     '¿Es Requisito?',
     '¿Satisface Cliente?',
-    'Tiempo Actividad',
-    'Tiempo Total Proceso',
+    'Tiempo Sin Demora',
+    'Tiempo Con Demora',
     'Unidad Tiempo',
     'Formato Utilizado',
     'Registro de Información',
@@ -234,8 +233,7 @@ export async function exportWorkspaceToExcel(
             p.name,
             mapping.entradas || '',
             mapping.salidas || '',
-            mapping.reviso || '',
-            mapping.autorizo || '',
+            mapping.elaboro || mapping.reviso || mapping.autorizo || '',
             act.no,
             act.etapa || '',
             act.actividad || '',
@@ -261,7 +259,7 @@ export async function exportWorkspaceToExcel(
     });
   });
 
-  const wsPSMI = makeSheet('PSMI (Actividades)', psmiRows, [22, 28, 22, 22, 18, 18, 14, 20, 28, 38, 22, 22, 12, 15, 15, 18, 16, 20, 14, 20, 25, 22, 25, 26, 30], { stickyRowsCount: 1, stickyColumnsCount: 2 });
+  const wsPSMI = makeSheet('PSMI (Actividades)', psmiRows, [22, 28, 22, 22, 20, 14, 20, 28, 38, 22, 22, 12, 15, 15, 18, 16, 20, 14, 20, 25, 22, 25, 26, 30], { stickyRowsCount: 1, stickyColumnsCount: 2 });
 
   // ==========================================
   // SHEET 4: DASHBOARD WITH RADAR CHARTS

@@ -50,8 +50,10 @@ export interface PSMIMapping {
   entradas: string;
   salidas: string;
   unidadTiempo: 'Minutos' | 'Horas' | 'Días';
-  reviso: string;
-  autorizo: string;
+  elaboro?: string;
+  /** Campos heredados; se conservan para leer expedientes anteriores. */
+  reviso?: string;
+  autorizo?: string;
   actividades: PSMIActivity[];
 }
 
@@ -227,8 +229,7 @@ export function createEmptyPSMI(processName: string = ''): PSMIMapping {
     entradas: '',
     salidas: '',
     unidadTiempo: 'Minutos',
-    reviso: '',
-    autorizo: '',
+    elaboro: '',
     actividades: [],
   };
 }
