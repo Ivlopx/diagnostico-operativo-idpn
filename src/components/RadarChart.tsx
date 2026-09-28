@@ -262,7 +262,7 @@ export const ComparativeRadarChart: React.FC<{ series: RadarSeries[]; title?: st
 
   return <div className="flex flex-col items-center">
     {title && <h4 className="mb-2 font-serif text-sm font-semibold uppercase tracking-wide text-[#17212B]">{title}</h4>}
-    <svg viewBox={`0 0 ${size} ${size}`} className="h-auto w-full max-w-[620px] rounded-xl border border-[#D9D5CC] bg-white shadow-sm">
+    <svg viewBox={`0 0 ${size} ${size}`} className="h-auto w-full max-w-[460px] rounded-xl border border-[#D9D5CC] bg-white shadow-sm">
       {Array.from({ length: 5 }).map((_, levelIndex) => {
         const value = (levelIndex + 1) * 20;
         return <g key={value}>

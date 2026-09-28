@@ -9,6 +9,7 @@ import {
   LEVEL_MBC_LABELS,
   LEVEL_K_LABELS,
 } from '../types';
+import { generateOrganizationalInterpretation } from './organizationalInterpretation';
 
 const NAVY = '#173B57';
 const TERRACOTTA = '#C85B3C';
@@ -48,6 +49,7 @@ export async function exportWorkspaceToExcel(
 
   // 1. Calculate overall sustainable score and per-area scores
   const { sustainableScore, areaScoresMap } = calculateWorkspaceSustainableScore(areas, processes);
+  const interpretation = generateOrganizationalInterpretation(areas, processes);
 
   // ==========================================
   // SHEET 1: RESUMEN GENERAL
@@ -125,6 +127,45 @@ export async function exportWorkspaceToExcel(
     stickyRowsCount: 14,
     conditionalFormatting: areas.length ? [{ cellRange: { from: { row: 15, column: 10 }, to: { row: 14 + areas.length, column: 10 } }, condition: { operator: '>=', value: 60 }, style: { backgroundColor: '#DDEFE7', textColor: '#245B48', fontWeight: 'bold' } }] : undefined,
   });
+
+  const interpretationRows: SheetData = [
+    [{ value: 'INTERPRETACIÓN ORGANIZACIONAL', columnSpan: 4, fontWeight: 'bold', fontSize: 18, textColor: '#FFFFFF', backgroundColor: NAVY, height: 36, alignVertical: 'center' }],
+    [''],
+    sectionRow('NOTA DE ESCALA', 4),
+    [{ value: interpretation.scaleNote, columnSpan: 4, wrap: true, height: 55, alignVertical: 'top', backgroundColor: WARM }],
+    [''],
+    sectionRow('INTERPRETACIÓN GENERAL', 4),
+    [{ value: interpretation.general, columnSpan: 4, wrap: true, height: 65, alignVertical: 'top' }],
+    [''],
+    sectionRow('ANÁLISIS POR ÁREA', 4),
+    headerRow(['Área', 'J / Q / R originales', 'Brecha normalizada', 'Interpretación']),
+  ];
+  interpretation.areas.forEach((area) => interpretationRows.push(styledRow([
+    area.areaName,
+    `J ${area.J}/50 · Q ${area.Q}/50 · R ${area.R}/100`,
+    `${area.gap} pts · ${area.balance}`,
+    area.interpretation,
+  ], { wrap: true, alignVertical: 'top', borderColor: BORDER, borderStyle: 'thin', height: 70 })));
+  interpretationRows.push(
+    [''], sectionRow('PRINCIPALES BRECHAS', 4),
+    headerRow(['Área', 'Dimensiones involucradas', 'Diferencia', 'Interpretación']),
+  );
+  if (interpretation.gaps.length) {
+    interpretation.gaps.forEach((gap) => interpretationRows.push(styledRow([
+      gap.area, gap.dimensions, `${gap.difference} puntos`, gap.interpretation,
+    ], { wrap: true, alignVertical: 'top', borderColor: BORDER, borderStyle: 'thin', height: 55 })));
+  } else {
+    interpretationRows.push([{ value: 'No se identificaron brechas de 20 puntos normalizados o más.', columnSpan: 4, wrap: true }]);
+  }
+  interpretationRows.push(
+    [''], sectionRow('ÁREAS CON MAYOR EQUILIBRIO', 4),
+    [{ value: interpretation.balanceSummary, columnSpan: 4, wrap: true, height: 55, alignVertical: 'top' }],
+    [''], sectionRow('HALLAZGOS PRINCIPALES', 4),
+    ...interpretation.findings.map((finding, index) => [{ value: `${index + 1}. ${finding}`, columnSpan: 4, wrap: true, height: 38, alignVertical: 'top' }] as Cell[]),
+    [''], sectionRow('INTERPRETACIÓN EJECUTIVA', 4),
+    [{ value: interpretation.executive, columnSpan: 4, wrap: true, height: 95, alignVertical: 'top', backgroundColor: '#EEF3F6' }],
+  );
+  const wsInterpretation = makeSheet('Interpretación', interpretationRows, [25, 30, 22, 70], { stickyRowsCount: 1 });
 
   // ==========================================
   // SHEET 2: DOPYME - PROCESOS
@@ -337,5 +378,5 @@ export async function exportWorkspaceToExcel(
   const cleanName = companyName.replace(/[^a-zA-Z0-9_\-]/g, '_');
   const filename = `${cleanName}_Auditoria_Dopyme_PSMI.xlsx`;
 
-  await writeXlsxFile([wsDashboard, wsResumen, wsDopyme, wsPSMI]).toFile(filename);
+  await writeXlsxFile([wsDashboard, wsResumen, wsInterpretation, wsDopyme, wsPSMI]).toFile(filename);
 }

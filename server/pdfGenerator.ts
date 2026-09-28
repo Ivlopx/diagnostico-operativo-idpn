@@ -6,6 +6,16 @@ export interface PDFExportPayload {
   companyName: string;
   generatedDate: string;
   sustainableScore: number;
+  interpretation?: {
+    hasData: boolean;
+    scaleNote: string;
+    general: string;
+    areas: Array<{ areaName: string; J: number; Q: number; R: number; gap: number; balance: string; interpretation: string }>;
+    gaps: Array<{ area: string; dimensions: string; difference: number; interpretation: string }>;
+    balanceSummary: string;
+    findings: string[];
+    executive: string;
+  };
   summaryCharts: {
     title: string;
     imageBase64: string;
@@ -205,6 +215,73 @@ export function buildAuditPdfStream(payload: PDFExportPayload): PDFKit.PDFDocume
     doc.font('Helvetica').fillColor('#17212B').text(`${eligible}/${area.processes.length} habilitados`, tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 8, curY + 6);
     doc.y = curY + 20;
   });
+
+  if (payload.interpretation) {
+    const analysis = payload.interpretation;
+    doc.addPage();
+    addHeader('Interpretación Organizacional', 'Lectura objetiva de la relación entre Operación (J), Procesos (Q) y Resultado (R)');
+
+    doc.fillColor('#173B57').fontSize(9).font('Helvetica-Bold').text('NOTA DE ESCALA');
+    doc.moveDown(0.3);
+    doc.fillColor('#17212B').fontSize(8.5).font('Helvetica').text(analysis.scaleNote, { lineGap: 2 });
+    doc.moveDown(0.8);
+
+    doc.fillColor('#173B57').fontSize(10).font('Helvetica-Bold').text('Interpretación general');
+    doc.moveDown(0.3);
+    doc.fillColor('#17212B').fontSize(9).font('Helvetica').text(analysis.general, { lineGap: 3 });
+    doc.moveDown(0.8);
+
+    if (analysis.areas.length) {
+      doc.fillColor('#173B57').fontSize(10).font('Helvetica-Bold').text('Análisis por área');
+      doc.moveDown(0.4);
+      analysis.areas.forEach((area) => {
+        checkPageBreak(70);
+        doc.fillColor('#17212B').fontSize(9).font('Helvetica-Bold').text(
+          `${area.areaName}  ·  J ${area.J}/50  ·  Q ${area.Q}/50  ·  R ${area.R}/100  ·  Brecha ${area.gap} pts`,
+        );
+        doc.fillColor('#17212B').fontSize(8.5).font('Helvetica').text(area.interpretation, { lineGap: 2 });
+        doc.moveDown(0.6);
+      });
+
+      checkPageBreak(80);
+      doc.fillColor('#173B57').fontSize(10).font('Helvetica-Bold').text('Principales brechas');
+      doc.moveDown(0.3);
+      if (analysis.gaps.length) {
+        analysis.gaps.forEach((gap) => {
+          checkPageBreak(45);
+          doc.fillColor('#17212B').fontSize(8.5).font('Helvetica-Bold').text(`${gap.area}: ${gap.dimensions} · ${gap.difference} puntos`);
+          doc.font('Helvetica').text(gap.interpretation, { lineGap: 2 });
+          doc.moveDown(0.4);
+        });
+      } else {
+        doc.fillColor('#17212B').fontSize(8.5).font('Helvetica').text('No se identificaron brechas de 20 puntos normalizados o más.');
+      }
+
+      checkPageBreak(75);
+      doc.moveDown(0.7);
+      doc.fillColor('#173B57').fontSize(10).font('Helvetica-Bold').text('Áreas con mayor equilibrio');
+      doc.moveDown(0.3);
+      doc.fillColor('#17212B').fontSize(8.5).font('Helvetica').text(analysis.balanceSummary, { lineGap: 2 });
+
+      checkPageBreak(100);
+      doc.moveDown(0.8);
+      doc.fillColor('#173B57').fontSize(10).font('Helvetica-Bold').text('Hallazgos principales');
+      doc.moveDown(0.3);
+      analysis.findings.forEach((finding, index) => {
+        checkPageBreak(35);
+        doc.fillColor('#17212B').fontSize(8.5).font('Helvetica').text(`${index + 1}. ${finding}`, { lineGap: 2 });
+        doc.moveDown(0.25);
+      });
+
+      checkPageBreak(120);
+      doc.moveDown(0.8);
+      doc.rect(40, doc.y, contentWidth, 105).fillAndStroke('#EEF3F6', '#173B57');
+      const executiveY = doc.y + 10;
+      doc.fillColor('#173B57').fontSize(10).font('Helvetica-Bold').text('Interpretación ejecutiva', 52, executiveY);
+      doc.fillColor('#17212B').fontSize(8.5).font('Helvetica').text(analysis.executive, 52, executiveY + 16, { width: contentWidth - 24, lineGap: 2 });
+      doc.y = executiveY + 105;
+    }
+  }
 
   // ---------------- DETAILED SECTIONS PER AREA ----------------
   payload.areas.forEach((area, aIdx) => {

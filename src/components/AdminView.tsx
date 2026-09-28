@@ -295,7 +295,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
       await exportWorkspaceToExcel(fullData.workspace, fullData.areas, fullData.processes);
       setNotification({
         type: 'success',
-        message: `Se descargó el archivo Excel de "${row.name}" con 4 pestañas (Dashboard, Resumen, DOPYME y PSMI).`,
+        message: `Se descargó el archivo Excel de "${row.name}" con 5 pestañas (Dashboard, Resumen, Interpretación, DOPYME y PSMI).`,
       });
     } catch (err) {
       console.error('Error exporting workspace to Excel:', err);

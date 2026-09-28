@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Plus,
   Trash2,
@@ -37,6 +37,8 @@ import {
 } from '../utils/workspaceService';
 import { ComparativeRadarChart, RadarChart, RadarDataPoint } from './RadarChart';
 import { DopymeInstructions } from './DopymeInstructions';
+import { OrganizationalInterpretation } from './OrganizationalInterpretation';
+import { generateOrganizationalInterpretation } from '../utils/organizationalInterpretation';
 
 interface DopymeViewProps {
   workspaceId: string;
@@ -68,6 +70,10 @@ export const DopymeView: React.FC<DopymeViewProps> = ({
   const { sustainableScore, areaScoresMap } = calculateWorkspaceSustainableScore(
     areas,
     processes
+  );
+  const organizationalInterpretation = useMemo(
+    () => generateOrganizationalInterpretation(areas, processes),
+    [areas, processes],
   );
 
   // Clear all data (blank workspace)
@@ -357,7 +363,7 @@ export const DopymeView: React.FC<DopymeViewProps> = ({
               </p>
             </div>
 
-            <div className="rounded-xl border border-[#D9D5CC] bg-white p-4 shadow-sm sm:p-6">
+            <div className="mx-auto max-w-2xl rounded-xl border border-[#D9D5CC] bg-white p-3 shadow-sm sm:p-5">
               <ComparativeRadarChart
                 title="Comparativa integral por área"
                 series={[
@@ -369,6 +375,8 @@ export const DopymeView: React.FC<DopymeViewProps> = ({
               <p className="mt-3 text-center text-[11px] text-[#7A8490]">J y Q se normalizan de 50 a 100 exclusivamente para la comparación visual.</p>
             </div>
           </div>
+
+          <OrganizationalInterpretation analysis={organizationalInterpretation} />
 
           {/* Table of Areas Summary */}
           <div className="bg-white border border-[#D9D5CC] rounded-xl shadow-sm overflow-hidden">

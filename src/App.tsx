@@ -26,6 +26,7 @@ import {
   verifyAdminSession,
 } from './utils/workspaceService';
 import { renderComparativeRadarToDataURL, renderRadarToDataURL } from './utils/radarRenderer';
+import { generateOrganizationalInterpretation } from './utils/organizationalInterpretation';
 import { Header } from './components/Header';
 import { LandingPage } from './components/LandingPage';
 import { WorkspaceHome } from './components/WorkspaceHome';
@@ -321,6 +322,7 @@ export default function App() {
           day: 'numeric',
         }),
         sustainableScore,
+        interpretation: generateOrganizationalInterpretation(areas, processes),
         summaryCharts: [{ title: 'Comparativa Integral por Área', imageBase64: comparisonImg }],
         areas: areasPayload,
       };
