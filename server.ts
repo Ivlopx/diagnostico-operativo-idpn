@@ -155,6 +155,33 @@ app.delete('/api/workspaces/:workspaceId/areas/:areaId', async (req, res) => {
   await pool.query('DELETE FROM areas WHERE id=$1 AND workspace_id=$2', [req.params.areaId, req.params.workspaceId]); res.status(204).end();
 });
 
+app.post('/api/workspaces/:workspaceId/processes/:processId/psmis/:psmiId/lock', async (req, res) => {
+  const current = await allow(req, res, req.params.workspaceId); if (!current) return;
+  const raw = cookies(req).dopyme_session;
+  const holder = hash(raw);
+  const exists = await pool.query('SELECT 1 FROM processes WHERE id=$1 AND workspace_id=$2', [req.params.processId, req.params.workspaceId]);
+  if (!exists.rowCount) return res.status(404).json({ error: 'El departamento ya no existe.' });
+  const locked = await pool.query(`INSERT INTO psmi_edit_locks(workspace_id,process_id,psmi_id,holder_token_hash,expires_at)
+    VALUES($1,$2,$3,$4,now()+interval '45 seconds')
+    ON CONFLICT (workspace_id,process_id,psmi_id) DO UPDATE SET holder_token_hash=EXCLUDED.holder_token_hash,
+      expires_at=EXCLUDED.expires_at,updated_at=now()
+    WHERE psmi_edit_locks.expires_at<=now() OR psmi_edit_locks.holder_token_hash=EXCLUDED.holder_token_hash
+    RETURNING expires_at`, [req.params.workspaceId, req.params.processId, req.params.psmiId, holder]);
+  if (!locked.rowCount) {
+    const active = await pool.query('SELECT expires_at FROM psmi_edit_locks WHERE workspace_id=$1 AND process_id=$2 AND psmi_id=$3', [req.params.workspaceId, req.params.processId, req.params.psmiId]);
+    return res.status(423).json({ error: 'Otra persona está editando este departamento.', expiresAt: active.rows[0]?.expires_at });
+  }
+  res.json({ acquired: true, expiresAt: locked.rows[0].expires_at });
+});
+
+app.delete('/api/workspaces/:workspaceId/processes/:processId/psmis/:psmiId/lock', async (req, res) => {
+  if (!(await allow(req, res, req.params.workspaceId))) return;
+  const raw = cookies(req).dopyme_session;
+  await pool.query('DELETE FROM psmi_edit_locks WHERE workspace_id=$1 AND process_id=$2 AND psmi_id=$3 AND holder_token_hash=$4',
+    [req.params.workspaceId, req.params.processId, req.params.psmiId, hash(raw)]);
+  res.status(204).end();
+});
+
 app.get('/api/workspaces/:workspaceId/processes', async (req, res) => {
   if (!(await allow(req, res, req.params.workspaceId))) return;
   res.json((await pool.query('SELECT * FROM processes WHERE workspace_id=$1 ORDER BY sort_order,name', [req.params.workspaceId])).rows.map(processRow));
@@ -168,8 +195,15 @@ app.post('/api/workspaces/:workspaceId/processes', async (req, res) => {
 app.patch('/api/workspaces/:workspaceId/processes/:processId', async (req, res) => {
   if (!(await allow(req, res, req.params.workspaceId))) return;
   const input = validBody(processUpdateSchema, req, res); if (!input) return;
+  if (input.psmis) {
+    const raw = cookies(req).dopyme_session;
+    const activeLock = input.lockPsmiId && raw ? await pool.query(`SELECT 1 FROM psmi_edit_locks
+      WHERE workspace_id=$1 AND process_id=$2 AND psmi_id=$3 AND holder_token_hash=$4 AND expires_at>now()`,
+      [req.params.workspaceId, req.params.processId, input.lockPsmiId, hash(raw)]) : null;
+    if (!activeLock?.rowCount) return res.status(423).json({ error: 'Necesitas tomar la edición de este departamento antes de guardar.' });
+  }
   const found = await pool.query('SELECT * FROM processes WHERE id=$1 AND workspace_id=$2', [req.params.processId, req.params.workspaceId]);
-  if (!found.rowCount) return res.status(404).end(); const next = { ...processRow(found.rows[0]), ...input };
+  if (!found.rowCount) return res.status(404).end(); const { lockPsmiId: _lockPsmiId, ...changes } = input; const next = { ...processRow(found.rows[0]), ...changes };
   const updated = await pool.query(`UPDATE processes SET name=$1,sort_order=$2,o=$3,p=$4,e=$5,a=$6,level_mbc=$7,level_k=$8,psmis=$9::jsonb,revision=revision+1,updated_at=now() WHERE id=$10 AND workspace_id=$11 AND revision=$12 RETURNING *`,
     [name(next.name), next.order, next.O, next.P, next.E, next.A, next.levelMBC, next.levelK, JSON.stringify(next.psmis || []), req.params.processId, req.params.workspaceId, input.revision]);
   if (!updated.rowCount) {

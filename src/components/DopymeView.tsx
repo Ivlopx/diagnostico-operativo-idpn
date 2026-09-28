@@ -553,9 +553,9 @@ export const DopymeView: React.FC<DopymeViewProps> = ({
           </div>
 
           {/* Area Radar & Processes Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
             {/* Area Processes Radar Chart */}
-            <div className="bg-white border border-[#D9D5CC] p-5 rounded-xl shadow-sm flex flex-col items-center justify-center">
+            <div className="w-full min-w-0 self-start overflow-hidden rounded-xl border border-[#D9D5CC] bg-white p-3 shadow-sm sm:p-5 lg:sticky lg:top-4">
               <RadarChart
                 chartId={`radar-area-${activeArea.id}`}
                 data={areaProcessesRadarData}

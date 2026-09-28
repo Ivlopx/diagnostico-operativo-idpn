@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Lock,
   Plus,
@@ -31,7 +31,7 @@ import {
   calculatePSMISummary,
   createEmptyPSMI,
 } from '../types';
-import { updateProcess } from '../utils/workspaceService';
+import { acquirePSMIEditLock, releasePSMIEditLock, updateProcess } from '../utils/workspaceService';
 import { PSMIInstructions } from './PSMIInstructions';
 
 interface PSMIViewProps {
@@ -54,6 +54,10 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
   const [confirmDeletePSMIIndex, setConfirmDeletePSMIIndex] = useState<{ procId: string; index: number } | null>(null);
   const [confirmDeleteActivityId, setConfirmDeleteActivityId] = useState<string | null>(null);
   const [filterAreaId, setFilterAreaId] = useState<string>('all');
+  const [draftPSMIs, setDraftPSMIs] = useState<Record<string, PSMIMapping[]>>({});
+  const saveTimers = useRef<Record<string, number>>({});
+  const [editLock, setEditLock] = useState<{ status: 'loading' | 'held' | 'blocked' | 'error'; message?: string }>({ status: 'loading' });
+  const [lockRetry, setLockRetry] = useState(0);
 
   // Filter processes by area if selected
   const filteredProcesses = filterAreaId === 'all'
@@ -68,12 +72,65 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
 
   // Set default selected process if none or invalid
   const eligibleProcesses = processes.filter((p) => calculateProcessScores(p).isPSMIEnabled);
-  const currentProcess = processes.find((p) => p.id === selectedProcessId) || eligibleProcesses[0] || processes[0];
+  const serverCurrentProcess = processes.find((p) => p.id === selectedProcessId) || eligibleProcesses[0] || processes[0];
+  const currentProcess = serverCurrentProcess
+    ? { ...serverCurrentProcess, psmis: draftPSMIs[serverCurrentProcess.id] || serverCurrentProcess.psmis }
+    : undefined;
 
   // Active PSMI index for the selected process
   const activePSMIIndex = currentProcess
     ? activePSMIIndexMap[currentProcess.id] || 0
     : 0;
+
+  const currentPSMIList = currentProcess?.psmis || [createEmptyPSMI(currentProcess?.name || '')];
+  const safePSMIIndex = activePSMIIndex < currentPSMIList.length ? activePSMIIndex : 0;
+  const currentPSMI = currentPSMIList[safePSMIIndex] || createEmptyPSMI(currentProcess?.name || '');
+  const lockProcessId = currentProcess?.id;
+  const lockPsmiId = currentPSMI?.id;
+
+  useEffect(() => {
+    setDraftPSMIs((previous) => {
+      let changed = false;
+      const next = { ...previous };
+      for (const process of processes) {
+        if (next[process.id] && JSON.stringify(next[process.id]) === JSON.stringify(process.psmis || [])) {
+          delete next[process.id];
+          changed = true;
+        }
+      }
+      return changed ? next : previous;
+    });
+  }, [processes]);
+
+  useEffect(() => {
+    if (!lockProcessId || !lockPsmiId) return;
+    let active = true;
+    let heldByThisEffect = false;
+    let renewal: number | undefined;
+    const acquire = async () => {
+      try {
+        await acquirePSMIEditLock(workspaceId, lockProcessId, lockPsmiId);
+        heldByThisEffect = true;
+        if (active) setEditLock({ status: 'held' });
+      } catch (error: any) {
+        if (!active) return;
+        setEditLock({
+          status: error?.status === 423 ? 'blocked' : 'error',
+          message: error?.message || 'No fue posible habilitar la edición.',
+        });
+      }
+    };
+    setEditLock({ status: 'loading' });
+    void acquire();
+    renewal = window.setInterval(acquire, 20_000);
+    return () => {
+      active = false;
+      if (renewal) window.clearInterval(renewal);
+      if (heldByThisEffect) {
+        window.setTimeout(() => void releasePSMIEditLock(workspaceId, lockProcessId, lockPsmiId).catch(() => undefined), 1_000);
+      }
+    };
+  }, [workspaceId, lockProcessId, lockPsmiId, lockRetry]);
 
   // Toggle activity expanded state
   const toggleActivity = (activityId: string) => {
@@ -84,12 +141,19 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
   };
 
   // Helper to persist updated PSMIs through the SQL API
-  const savePSMIs = async (processId: string, updatedPSMIs: PSMIMapping[]) => {
-    try {
-      await updateProcess(workspaceId, processId, { psmis: updatedPSMIs });
-    } catch (err) {
-      console.error('Error saving PSMI:', err);
-    }
+  const savePSMIs = async (processId: string, updatedPSMIs: PSMIMapping[], immediate = false) => {
+    if (editLock.status !== 'held' || !lockPsmiId) return;
+    setDraftPSMIs((previous) => ({ ...previous, [processId]: updatedPSMIs }));
+    if (saveTimers.current[processId]) window.clearTimeout(saveTimers.current[processId]);
+    const persist = async () => {
+      try {
+        await updateProcess(workspaceId, processId, { psmis: updatedPSMIs }, lockPsmiId);
+      } catch (err) {
+        console.error('Error saving PSMI:', err);
+      }
+    };
+    if (immediate) await persist();
+    else saveTimers.current[processId] = window.setTimeout(persist, 650);
   };
 
   // Add another PSMI mapping to current process
@@ -97,7 +161,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
     const currentList = proc.psmis || [];
     const newPSMI = createEmptyPSMI('');
     const updated = [...currentList, newPSMI];
-    await savePSMIs(proc.id, updated);
+    await savePSMIs(proc.id, updated, true);
     setActivePSMIIndexMap((prev) => ({ ...prev, [proc.id]: updated.length - 1 }));
   };
 
@@ -107,10 +171,10 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
     if (currentList.length <= 1) {
       // Just reset to blank
       const resetPSMI = createEmptyPSMI('');
-      await savePSMIs(proc.id, [resetPSMI]);
+      await savePSMIs(proc.id, [resetPSMI], true);
     } else {
       const updated = currentList.filter((_, idx) => idx !== indexToDelete);
-      await savePSMIs(proc.id, updated);
+      await savePSMIs(proc.id, updated, true);
       setActivePSMIIndexMap((prev) => ({ ...prev, [proc.id]: Math.max(0, indexToDelete - 1) }));
     }
     setConfirmDeletePSMIIndex(null);
@@ -166,7 +230,7 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
       actividades: [...currentActivities, newActivity],
     };
 
-    await savePSMIs(proc.id, list);
+    await savePSMIs(proc.id, list, true);
     // Auto expand the new activity
     setExpandedActivities((prev) => ({ ...prev, [newActivity.id]: true }));
   };
@@ -211,14 +275,10 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
       actividades: filtered,
     };
 
-    await savePSMIs(proc.id, list);
+    await savePSMIs(proc.id, list, true);
     setConfirmDeleteActivityId(null);
   };
 
-  // Active PSMI instance
-  const currentPSMIList = currentProcess?.psmis || [createEmptyPSMI(currentProcess?.name || '')];
-  const safePSMIIndex = activePSMIIndex < currentPSMIList.length ? activePSMIIndex : 0;
-  const currentPSMI = currentPSMIList[safePSMIIndex] || createEmptyPSMI(currentProcess?.name || '');
   const psmiSummary = calculatePSMISummary(currentPSMI);
   const currentProcScore = currentProcess ? calculateProcessScores(currentProcess) : null;
 
@@ -425,6 +485,26 @@ export const PSMIView: React.FC<PSMIViewProps> = ({
           ) : (
             /* UNLOCKED PSMI EDITOR (R >= 60) */
             <div className="space-y-6">
+              {editLock.status !== 'held' && (
+                <div className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${editLock.status === 'blocked' ? 'border-[#C85B3C]/50 bg-[#FFF2ED]' : 'border-[#D9D5CC] bg-white'}`}>
+                  <div className="flex items-start gap-2">
+                    <Lock className="mt-0.5 h-4 w-4 shrink-0 text-[#C85B3C]" />
+                    <div>
+                      <p className="text-sm font-semibold text-[#17212B]">
+                        {editLock.status === 'loading' ? 'Preparando la edición…' : editLock.status === 'blocked' ? 'Este departamento está siendo editado' : 'No se pudo habilitar la edición'}
+                      </p>
+                      <p className="mt-0.5 text-xs text-[#17212B]/70">
+                        {editLock.status === 'blocked' ? 'Otra persona tiene la edición temporal. Puedes consultar la información, pero no modificarla hasta que termine.' : editLock.message || 'Espera un momento mientras comprobamos que nadie más esté editando este análisis.'}
+                      </p>
+                    </div>
+                  </div>
+                  {(editLock.status === 'blocked' || editLock.status === 'error') && (
+                    <button onClick={() => setLockRetry((value) => value + 1)} className="shrink-0 rounded-xl border border-[#173B57] bg-white px-3 py-1.5 text-xs font-semibold text-[#173B57]">
+                      Intentar editar
+                    </button>
+                  )}
+                </div>
+              )}
               {/* Process Top Header & Multi-PSMI Tabs */}
               <div className="bg-white border border-[#D9D5CC] p-5 rounded-xl shadow-sm space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D9D5CC] pb-3">

@@ -23,7 +23,8 @@ export const processUpdateSchema = z.object({
   levelMBC: z.enum(['NONE', 'M', 'B', 'C']).optional(),
   levelK: z.enum(['NE', 'E', 'D', 'I', 'U', 'MC']).optional(),
   psmis: z.array(z.unknown()).max(100).optional(),
-}).strict().refine((value) => Object.keys(value).some((key) => key !== 'revision'), 'No hay cambios para guardar.');
+  lockPsmiId: z.string().min(1).max(200).optional(),
+}).strict().refine((value) => Object.keys(value).some((key) => key !== 'revision' && key !== 'lockPsmiId'), 'No hay cambios para guardar.');
 export const adminLoginSchema = z.object({ password: z.string().min(1).max(500) }).strict();
 const adminPassword = z.string().min(12, 'La contraseña debe tener al menos 12 caracteres.').max(128);
 export const adminSetupSchema = z.object({ password: adminPassword }).strict();

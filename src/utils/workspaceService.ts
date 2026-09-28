@@ -63,13 +63,13 @@ export async function addProcess(workspaceId: string, areaId: string, name = '',
 const processRevisions = new Map<string, number>();
 const processQueues = new Map<string, Promise<void>>();
 
-export function updateProcess(workspaceId: string, processId: string, updates: Partial<ProcessDoc>) {
+export function updateProcess(workspaceId: string, processId: string, updates: Partial<ProcessDoc>, lockPsmiId?: string) {
   const previous = processQueues.get(processId) || Promise.resolve();
   const operation = previous.catch(() => undefined).then(async () => {
     const revision = processRevisions.get(processId);
     if (!revision) throw new Error('No se ha cargado la versión actual del proceso.');
     try {
-      const saved = await api<ProcessDoc>(`/api/workspaces/${workspaceId}/processes/${processId}`, patch({ ...updates, revision }));
+      const saved = await api<ProcessDoc>(`/api/workspaces/${workspaceId}/processes/${processId}`, patch({ ...updates, revision, ...(lockPsmiId ? { lockPsmiId } : {}) }));
       processRevisions.set(processId, saved.revision);
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
@@ -87,6 +87,14 @@ export function updateProcess(workspaceId: string, processId: string, updates: P
 export function deleteProcess(workspaceId: string, processId: string) { return api<void>(`/api/workspaces/${workspaceId}/processes/${processId}`, { method: 'DELETE' }); }
 export function clearWorkspaceData(workspaceId: string) { return api<void>(`/api/workspaces/${workspaceId}/data`, { method: 'DELETE' }); }
 export function resetAllProcessesToBlank(workspaceId: string) { return api<void>(`/api/workspaces/${workspaceId}/processes/reset`, body({})); }
+
+export interface PSMIEditLock { acquired: true; expiresAt: string; }
+export function acquirePSMIEditLock(workspaceId: string, processId: string, psmiId: string) {
+  return api<PSMIEditLock>(`/api/workspaces/${workspaceId}/processes/${processId}/psmis/${encodeURIComponent(psmiId)}/lock`, body({}));
+}
+export function releasePSMIEditLock(workspaceId: string, processId: string, psmiId: string) {
+  return api<void>(`/api/workspaces/${workspaceId}/processes/${processId}/psmis/${encodeURIComponent(psmiId)}/lock`, { method: 'DELETE', keepalive: true });
+}
 
 export interface RecentWorkspace { id: string; companyName: string; lastVisited: number; inviteToken?: string; }
 const RECENT_KEY = 'dopyme_recent_workspaces';
